@@ -1,9 +1,8 @@
 """
-Demo Day 1: El Arte de los Datos Estáticos
-Proyecto: La Brecha de Prosperidad Europea: Asimetrías Territoriales y Socioeconómicas
+Demo Day 1: Visualización y Análisis de Datos Estáticos
+Proyecto: Asimetrías Territoriales y Distribución de Riqueza en Europa
 Asignatura: Visualización y Análisis de Datos (VAD) - UPM
 Autor: Javier
-Metodología: Storytelling with Data (Cole Nussbaumer Knaflic), Edward Tufte y Atributos Preatencionales
 """
 
 import os
