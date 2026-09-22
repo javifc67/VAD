@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>El Espejismo de la Cohesión | Demo Day 1 - Javier</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-page: #f1f5f9;
+      --bg-slide: #fafafa; /* EXACT MATCH to Matplotlib #FAFAFA */
+      --bg-card: #ffffff;
+      --border-subtle: #e2e8f0;
+      --border-strong: #cbd5e1;
+      --text-black: #0f172a;
+      --text-body: #334155;
+      --text-muted: #64748b;
+      --text-dim: #94a3b8;
+      
+      --chart-blue: #00629b;
+      --chart-cyan: #0284c7;
+      --chart-red: #d92121;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: var(--bg-page);
+      color: var(--text-black);
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Top Ribbon */
+    header.ribbon {
+      height: 52px;
+      background: rgba(255, 255, 255, 0.94);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 1.8rem;
+      z-index: 100;
+      flex-shrink: 0;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+    }
+
+    .brand-mark {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .brand-mark span.tag {
+      font-size: 0.68rem;
+      font-weight: 800;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--chart-cyan);
+      border: 1px solid rgba(2, 132, 199, 0.25);
+      background: rgba(2, 132, 199, 0.06);
+      padding: 3px 8px;
+      border-radius: 4px;
+    }
+    .brand-mark span.course {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .nav-cluster {
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+    }
+
+    .counter-pill {
+      font-family: 'Syne', sans-serif;
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: var(--text-black);
+      background: var(--bg-page);
+      border: 1px solid var(--border-subtle);
+      padding: 4px 12px;
+      border-radius: 999px;
+    }
+
+    .timer-ring {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      background: #ffffff;
+      border: 1px solid var(--border-strong);
+      padding: 4px 12px;
+      border-radius: 6px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--chart-blue);
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.2s ease;
+    }
+    .timer-ring:hover {
+      border-color: var(--chart-cyan);
+    }
+    .timer-ring.warning {
+      color: #d97706;
+      border-color: #d97706;
+      background: #fffbeb;
+    }
+    .timer-ring.danger {
+      color: var(--chart-red);
+      border-color: var(--chart-red);
+      background: #fef2f2;
+      animation: pulse 1s infinite alternate;
+    }
+
+    @keyframes pulse {
+      from { transform: scale(1); }
+      to { transform: scale(1.03); }
+    }
+
+    .btn {
+      background: #ffffff;
+      border: 1px solid var(--border-strong);
+      color: var(--text-body);
+      padding: 5px 12px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: all 0.15s ease;
+    }
+    .btn:hover {
+      background: #f8fafc;
+      color: var(--text-black);
+      border-color: #94a3b8;
+    }
+    .btn.active-mode {
+      background: var(--chart-blue);
+      color: #ffffff;
+      border-color: var(--chart-blue);
+    }
+
+    /* Stage */
+    .stage {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.2rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .deck-frame {
+      width: 100%;
+      max-width: 1333px;
+      aspect-ratio: 16 / 9;
+      max-height: 94%;
+      position: relative;
+      border-radius: 12px;
+      background: var(--bg-slide);
+      border: 1px solid var(--border-subtle);
+      box-shadow: 0 20px 45px rgba(0, 0, 0, 0.08);
+      overflow: hidden;
+    }
+
+    /* Slide */
+    .slide {
+      position: absolute;
+      inset: 0;
+      display: none;
+      flex-direction: column;
+      padding: 2.2rem 3.4rem;
+      opacity: 0;
+      transform: scale(0.99);
+      transition: opacity 0.25s ease, transform 0.25s ease;
+      background: var(--bg-slide);
+    }
+    .slide.active {
+      display: flex;
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    /* Editorial Headers */
+    .slide-eyebrow {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      margin-bottom: 0.25rem;
+    }
+    .eyebrow-act {
+      font-size: 0.72rem;
+      font-weight: 800;
+      color: var(--text-muted);
+      letter-spacing: 1.4px;
+      text-transform: uppercase;
+    }
+    .eyebrow-sep {
+      color: var(--text-dim);
+      font-size: 0.7rem;
+    }
+    .eyebrow-theme {
+      font-size: 0.72rem;
+      font-weight: 800;
+      color: var(--chart-cyan);
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+    }
+
+    .slide-headline {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.7rem;
+      font-weight: 800;
+      color: var(--text-black);
+      line-height: 1.2;
+      letter-spacing: -0.4px;
+    }
+    .slide-lead {
+      font-size: 0.92rem;
+      color: var(--text-muted);
+      margin-top: 0.35rem;
+      margin-bottom: 1rem;
+      padding-bottom: 0.7rem;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    /* Layout */
+    .slide-grid-clean {
+      display: grid;
+      grid-template-columns: 1.38fr 0.95fr;
+      gap: 2rem;
+      flex: 1;
+      min-height: 0;
+      align-items: stretch;
+    }
+
+    .canvas-wrapper {
+      background: transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    .canvas-wrapper img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+
+    /* Aside Narrative */
+    .editorial-aside {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 0.9rem;
+    }
+
+    .stat-hero {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 1.1rem 1.4rem;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.02);
+    }
+    .stat-hero .num {
+      font-family: 'Syne', sans-serif;
+      font-size: 2.8rem;
+      font-weight: 800;
+      line-height: 1;
+      margin-bottom: 0.25rem;
+    }
+    .stat-hero .num.blue { color: var(--chart-blue); }
+    .stat-hero .num.red { color: var(--chart-red); }
+    .stat-hero .num.cyan { color: var(--chart-cyan); }
+
+    .stat-hero .label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .narrative-stream {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 1.2rem 1.4rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.8rem;
+      overflow-y: auto;
+      flex: 1;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.02);
+    }
+    .narrative-entry {
+      font-size: 0.87rem;
+      line-height: 1.45;
+      color: var(--text-body);
+    }
+    .narrative-entry strong {
+      color: var(--text-black);
+      font-weight: 700;
+    }
+    .narrative-entry.red strong {
+      color: var(--chart-red);
+    }
+
+    /* Cover Slide */
+    .cover-body {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      height: 100%;
+    }
+    .cover-tag {
+      font-size: 0.78rem;
+      font-weight: 800;
+      color: var(--chart-cyan);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 0.8rem;
+    }
+    .cover-h1 {
+      font-family: 'Syne', sans-serif;
+      font-size: 3.4rem;
+      font-weight: 800;
+      color: var(--text-black);
+      line-height: 1.08;
+      letter-spacing: -1.5px;
+      margin-bottom: 0.9rem;
+    }
+    .cover-desc {
+      font-size: 1.2rem;
+      color: var(--text-muted);
+      max-width: 850px;
+      line-height: 1.5;
+      margin-bottom: 2.5rem;
+    }
+
+    .cover-triad {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
+      margin-bottom: 2.2rem;
+      border-top: 1px solid var(--border-subtle);
+      padding-top: 1.8rem;
+    }
+    .triad-box {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+    .triad-act {
+      font-size: 0.72rem;
+      font-weight: 800;
+      color: var(--text-dim);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .triad-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text-black);
+    }
+    .triad-text {
+      font-size: 0.86rem;
+      color: var(--text-body);
+      line-height: 1.45;
+    }
+
+    .cover-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 1px solid var(--border-subtle);
+      padding-top: 1rem;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    /* Final Slide (No Rubric! Pure Strategic Value) */
+    .triad-takeaways {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
+      flex: 1;
+      margin-bottom: 1.2rem;
+    }
+    .takeaway-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 1.5rem 1.6rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+    }
+    .takeaway-card h3 {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--chart-blue);
+      border-bottom: 1px solid var(--border-subtle);
+      padding-bottom: 0.5rem;
+    }
+    .takeaway-card.red h3 { color: var(--chart-red); }
+    .takeaway-card.cyan h3 { color: var(--chart-cyan); }
+    .takeaway-text {
+      font-size: 0.88rem;
+      line-height: 1.5;
+      color: var(--text-body);
+    }
+
+    .closing-callout {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 1rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+    }
+    .closing-quote {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--text-black);
+    }
+    .closing-meta {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+    }
+
+    /* Teleprompter */
+    #speaker-prompter {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 230px;
+      background: rgba(255, 255, 255, 0.98);
+      backdrop-filter: blur(15px);
+      border-top: 2px solid var(--chart-blue);
+      box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.12);
+      z-index: 200;
+      transform: translateY(100%);
+      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      flex-direction: column;
+    }
+    #speaker-prompter.open {
+      transform: translateY(0);
+    }
+    .prompter-bar {
+      height: 40px;
+      background: #f8fafc;
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 1.8rem;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+    }
+    .prompter-body {
+      flex: 1;
+      padding: 1.2rem 2.2rem;
+      overflow-y: auto;
+      font-size: 1.02rem;
+      line-height: 1.65;
+      color: var(--text-black);
+    }
+    .prompter-body .timer-cue {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      color: var(--chart-blue);
+      margin-bottom: 0.4rem;
+      display: inline-block;
+    }
+    .prompter-body .speech {
+      font-style: italic;
+      color: #1e293b;
+    }
+
+    @media print {
+      body {
+        background: #fff;
+        color: #000;
+        overflow: visible;
+        height: auto;
+      }
+      header.ribbon, #speaker-prompter {
+        display: none !important;
+      }
+      .stage {
+        padding: 0;
+        background: none;
+      }
+      .deck-frame {
+        box-shadow: none;
+        max-width: none;
+        width: 100vw;
+        height: 100vh;
+        border-radius: 0;
+        border: none;
+      }
+      .slide {
+        display: flex !important;
+        opacity: 1 !important;
+        transform: none !important;
+        page-break-after: always;
+        height: 100vh;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Ribbon -->
+  <header class="ribbon">
+    <div class="brand-mark">
+      <span class="tag">Demo Day 1</span>
+      <span class="course">UPM • Visualización y Análisis de Datos</span>
+    </div>
+
+    <div class="nav-cluster">
+      <button class="btn" onclick="prevSlide()" title="Anterior (← / Backspace)">◀ Anterior</button>
+      <div class="counter-pill" id="slide-indicator">01 / 06</div>
+      <button class="btn" onclick="nextSlide()" title="Siguiente (→ / Espacio)">Siguiente ▶</button>
+
+      <!-- Timer -->
+      <div class="timer-ring" id="timer-box" onclick="toggleTimer()" title="Clic para Iniciar/Pausar (Tecla T)">
+        ⏱ <span id="timer-digits">05:00</span>
+      </div>
+      <button class="btn" onclick="resetTimer()" title="Reiniciar">↺</button>
+    </div>
+
+    <div style="display: flex; gap: 0.5rem;">
+      <button class="btn" id="prompter-btn" onclick="togglePrompter()" title="Teleprompter de defensa oral (Tecla N)">🎙 Guión Orador [N]</button>
+      <button class="btn" onclick="toggleFullscreen()" title="Pantalla Completa (Tecla F)">⛶ [F]</button>
+      <button class="btn" onclick="window.print()" title="Imprimir / Guardar en PDF">🖨 PDF</button>
+    </div>
+  </header>
+
+  <!-- Slide Stage -->
+  <main class="stage">
+    <div class="deck-frame">
+
+      <!-- ============================================================= -->
+      <!-- SLIDE 1: PRÓLOGO / PORTADA -->
+      <!-- ============================================================= -->
+      <div class="slide active" id="slide-1" data-act="Prólogo" data-title="El Espejismo de la Cohesión" data-time="0:00 - 0:40"
+           data-speech="Buenos días a todos y al tribunal evaluador.<br><br>Europa proyecta hacia el exterior la imagen de un continente homogéneo, desarrollado y próspero. Nos acostumbramos a escuchar discursos sobre cohesión comunitaria y grandes cifras macroeconómicas agregadas.<br><br>Pero cuando dejamos de abrir ostras de forma caótica y pulimos los datos con rigor, esa imagen se desmorona.<br><br>Hoy no vengo a mostrar una galería de gráficos aislados, sino una historia con principio, nudo y desenlace articulada en tres revelaciones contundentes: la frontera invisible del abismo territorial, el mito de los gigantes económicos y la gran trampa estadística que engaña a las políticas de todo el continente.<br><br>Comencemos por el primer enigma: la fractura geográfica.">
+        <div class="cover-body">
+          <div class="cover-tag">Data Storytelling & Visualización Estática</div>
+          <h1 class="cover-h1">El Espejismo de la Cohesión</h1>
+          <p class="cover-desc">Tres fracturas invisibles que desmienten el mito de una Europa territorial y económicamente equilibrada.</p>
+
+          <div class="cover-triad">
+            <div class="triad-box">
+              <div class="triad-act">01. Primera Evidencia</div>
+              <div class="triad-title">La Frontera Invisible</div>
+              <div class="triad-text">El mapa no miente: un abismo insalvable de 33 a 1 entre el núcleo nórdico-alpino y la periferia balcánica.</div>
+            </div>
+            <div class="triad-box">
+              <div class="triad-act">02. Segunda Evidencia</div>
+              <div class="triad-title">El Mito de los Gigantes</div>
+              <div class="triad-text">La paradoja de los titanes: acumular volumen agregado de PIB no garantiza la calidad de vida de los ciudadanos.</div>
+            </div>
+            <div class="triad-box">
+              <div class="triad-act">03. Tercera Evidencia</div>
+              <div class="triad-title">La Gran Trampa Estadística</div>
+              <div class="triad-text">Por qué el 64% de los países europeos vive en la sombra de una media inflada que desvirtúa las decisiones políticas.</div>
+            </div>
+          </div>
+
+          <div class="cover-meta">
+            <span><strong>Autor:</strong> Javier</span>
+            <span><strong>Asignatura:</strong> Visualización y Análisis de Datos (UPM)</span>
+            <span><strong>Defensa Oficial:</strong> 5 minutos exactos</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================================================= -->
+      <!-- SLIDE 2: PILAR 1 - LA FRACTURA ESPACIAL (MAPA) -->
+      <!-- ============================================================= -->
+      <div class="slide" id="slide-2" data-act="Primera Evidencia" data-title="La Frontera Invisible" data-time="0:40 - 1:30"
+           data-speech="Nuestra primera revelación es espacial. Miren este mapa de Europa: desmiente de inmediato cualquier noción de equilibrio continental.<br><br>Existe una frontera económica invisible pero implacable. En el corazón occidental y en los países nórdicos, la renta por habitante supera con soltura los 60.000 dólares. Pero si desplazamos la vista hacia el sureste y los Balcanes, la renta se desploma por debajo de los 10.000 dólares.<br><br>A nivel de diseño visual, apliqué un criterio Gestalt fundamental: Rusia posee la mayor superficie del continente, pero incluirla en la rampa de color habría falseado por completo la percepción de las otras 38 naciones. Por eso la desacoplé en gris neutro: los datos deben iluminar el patrón relevante, no el tamaño del mapa.<br><br>Pero, ¿cuán profunda es realmente esta brecha? Pasemos a cuantificarla en los extremos.">
+        <div class="slide-eyebrow">
+          <span class="eyebrow-act">Primera Evidencia</span>
+          <span class="eyebrow-sep">/</span>
+          <span class="eyebrow-theme">Dimensión Espacial Continental</span>
+        </div>
+        <h2 class="slide-headline">La Riqueza se Atrinchera en el Eje Central y Nórdico</h2>
+        <p class="slide-lead">La distribución geográfica evidencia que el bienestar no fluye de forma homogénea, sino que se concentra en polos cerrados.</p>
+
+        <div class="slide-grid-clean">
+          <div class="canvas-wrapper">
+            <img src="figuras/grafico_1_mapa_europa.png" alt="Mapa Coroplético de Europa">
+          </div>
+          <div class="editorial-aside">
+            <div class="stat-hero">
+              <div class="num blue">> $60k</div>
+              <div class="label">Renta per cápita en el eje próspero</div>
+            </div>
+            <div class="narrative-stream">
+              <div class="narrative-entry">
+                <strong>Dos Continentes en Uno:</strong> La frontera socioeconómica separa con nitidez el núcleo nórdico-alpino de los márgenes balcánicos y orientales (<$10k).
+              </div>
+              <div class="narrative-entry">
+                <strong>Decisión Gestalt (Rusia Neutra):</strong> Su aislamiento en gris (#E2E8F0) neutraliza el sesgo de superficie, preservando la escala cromática de las otras 38 naciones.
+              </div>
+              <div class="narrative-entry">
+                <strong>Eliminación Total de Ruido:</strong> Sin coordenadas ni marcos superfluos (ax.set_axis_off); la atención es guiada mediante anotaciones directas.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================================================= -->
+      <!-- SLIDE 3: PILAR 1 (CONT.) - EL ABISMO 33:1 (TOP 5 VS BOTTOM 5) -->
+      <!-- ============================================================= -->
+      <div class="slide" id="slide-3" data-act="Primera Evidencia (Cont.)" data-title="La Dimensión del Abismo" data-time="1:30 - 2:20"
+           data-speech="Para entender la magnitud real de esta frontera invisible, enfrentamos a las cinco economías más ricas contra las cinco más rezagadas.<br><br>Y aquí estalla la primera cifra de impacto: treinta y tres a uno.<br><br>Un habitante de Luxemburgo, con más de 130.000 dólares anuales, genera lo mismo que treinta y tres habitantes de Ucrania juntos. Ningún territorio que aspire a llamarse cohesionado puede convivir pacíficamente con una brecha de este calibre.<br><br>Observen la ergonomía del gráfico: barras horizontales limpias, eliminación total del eje inferior y de las cuatro espinas de la gráfica, y rotulación directa del dato en miles de dólares. El uso de color es estrictamente preatencional: el azul profundo guía el ojo al récord absoluto, y el rojo alerta señala la herida abierta de la vulnerabilidad.<br><br>Pero ante esto surge una pregunta lógica: ¿acaso los países más grandes y poderosos son los que garantizan más riqueza a su gente? Pasemos a la segunda revelación.">
+        <div class="slide-eyebrow">
+          <span class="eyebrow-act">Primera Evidencia (Cont.)</span>
+          <span class="eyebrow-sep">/</span>
+          <span class="eyebrow-theme">Magnitud de la Desigualdad</span>
+        </div>
+        <h2 class="slide-headline">Un Continente Fracturado por un Factor de 33 a 1</h2>
+        <p class="slide-lead">La comparación de extremos desvela una distancia abismal que fractura cualquier estándar de convergencia real.</p>
+
+        <div class="slide-grid-clean">
+          <div class="canvas-wrapper">
+            <img src="figuras/grafico_2_brecha_extremos.png" alt="Top 5 vs Bottom 5">
+          </div>
+          <div class="editorial-aside">
+            <div class="stat-hero">
+              <div class="num red">33.1x</div>
+              <div class="label">Dispersión entre Luxemburgo y Ucrania</div>
+            </div>
+            <div class="narrative-stream">
+              <div class="narrative-entry red">
+                <strong>La Cifra de Impacto:</strong> Luxemburgo ($130.6k) multiplica por más de 33 veces la renta anual de un habitante ucraniano ($3.9k).
+              </div>
+              <div class="narrative-entry">
+                <strong>Ergonomía de Barras Horizontales:</strong> Disposición apaisada para una lectura fluida de las etiquetas nacionales sin sobrecarga postural.
+              </div>
+              <div class="narrative-entry">
+                <strong>Color Preatencional con Propósito:</strong> Azul oscuro (#00629B) para el líder absoluto y rojo vivo (#D92121) para el mínimo de la muestra.
+              </div>
+              <div class="narrative-entry">
+                <strong>Tinta-Dato 100% Eficiente:</strong> Supresión de ejes y espinas perimetrales; rotulación directa del valor exacto en cada barra.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================================================= -->
+      <!-- SLIDE 4: PILAR 2 - EL MITO DE LOS GIGANTES (DISPERSIÓN) -->
+      <!-- ============================================================= -->
+      <div class="slide" id="slide-4" data-act="Segunda Evidencia" data-title="El Mito de los Gigantes" data-time="2:20 - 3:10"
+           data-speech="Llegamos a la segunda revelación: el mito de los gigantes.<br><br>Existe la creencia arraigada de que pertenecer a una potencia económica con un PIB gigantesco garantiza un nivel de vida superior. Este diagrama de dispersión bivariada demuestra que esa premisa es falsa.<br><br>En el eje horizontal situamos la población; en el vertical, el PIB total; y el color azul mide la renta real por persona.<br><br>Observen el cuadrante superior derecho: Alemania, Reino Unido, Francia o Rusia concentran casi toda la masa económica continental simplemente porque son muchos millones de habitantes. Pero si buscan a los verdaderos líderes en bienestar —Suiza, Luxemburgo o Noruega— no están con los gigantes. Están abajo a la izquierda: países compactos, demográficamente moderados, pero con una densidad cromática de renta máxima.<br><br>Para evitar el ruido visual, etiqueté con precisión matemática solo a nueve países estratégicos. La conclusión es contundente: el volumen agregado es una ilusión de poder, pero la especialización inteligente es la que genera calidad de vida.<br><br>Y ahora, prepárense para el clímax de esta historia: la gran trampa de la media.">
+        <div class="slide-eyebrow">
+          <span class="eyebrow-act">Segunda Evidencia</span>
+          <span class="eyebrow-sep">/</span>
+          <span class="eyebrow-theme">Escala Económica vs. Bienestar</span>
+        </div>
+        <h2 class="slide-headline">La Falacia del Volumen: El Tamaño no Compra Prosperidad</h2>
+        <p class="slide-lead">La relación entre masa demográfica y PIB demuestra una marcada desconexión entre potencia agregada y bienestar ciudadano.</p>
+
+        <div class="slide-grid-clean">
+          <div class="canvas-wrapper">
+            <img src="figuras/grafico_3_dispersion_pib_poblacion.png" alt="Población vs PIB Total">
+          </div>
+          <div class="editorial-aside">
+            <div class="stat-hero">
+              <div class="num cyan">0 Correlación</div>
+              <div class="label">Entre volumen demográfico y renta per cápita</div>
+            </div>
+            <div class="narrative-stream">
+              <div class="narrative-entry">
+                <strong>La Ilusión de los Gigantes:</strong> Alemania, Francia, Reino Unido y Rusia dominan el PIB bruto por escala, pero no encabezan la renta individual.
+              </div>
+              <div class="narrative-entry">
+                <strong>Campeones Compactos:</strong> Suiza y Luxemburgo se ubican en la base demográfica pero alcanzan la cota cromática más alta de bienestar.
+              </div>
+              <div class="narrative-entry">
+                <strong>Etiquetado Selectivo:</strong> Rótulos limpios con conectores para 9 naciones clave, evitando el caos visual de 39 etiquetas simultáneas.
+              </div>
+              <div class="narrative-entry">
+                <strong>Despine Sistemático:</strong> Supresión de espinas superior y derecha para despejar el espacio bivariado.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================================================= -->
+      <!-- SLIDE 5: PILAR 3 - LA TRAMPA DE LA MEDIA (HISTOGRAMA) -->
+      <!-- ============================================================= -->
+      <div class="slide" id="slide-5" data-act="Tercera Evidencia (El Clímax)" data-title="La Trampa Estadística" data-time="3:10 - 4:10"
+           data-speech="Y aquí llegamos al corazón y clímax de esta investigación: la gran trampa de la media.<br><br>Constantemente escuchamos a organismos oficiales decir que la renta media en Europa ronda los 37.000 dólares. Suena reconfortante, pero es una falacia estadística monumental.<br><br>Miren la curva de distribución: presenta una brutal asimetría positiva a la derecha. ¿Qué significa esto en el mundo real?<br><br>Que casi dos tercios del continente —el 64% exacto de los países europeos— viven por debajo de esa supuesta media. Unos pocos paraísos financieros de renta extrema tiran artificialmente de la media hacia arriba, distorsionando la realidad de cientos de millones de personas.<br><br>La verdadera métrica de corte, la que describe al país europeo representativo, es la mediana: 24.700 dólares. Hay más de 12.000 dólares de distancia entre el discurso oficial y la realidad empírica.<br><br>En el gráfico contrastamos ambas medidas con una línea azul inflada y una línea roja discontinua para la mediana, insertando una tarjeta explicativa en el propio lienzo.<br><br>Esta es la perla: evaluar a Europa por su media es legislar sobre una mentira.">
+        <div class="slide-eyebrow">
+          <span class="eyebrow-act" style="color: var(--chart-red);">Tercera Evidencia (El Clímax)</span>
+          <span class="eyebrow-sep">/</span>
+          <span class="eyebrow-theme">Rigor y Sesgo Distributivo</span>
+        </div>
+        <h2 class="slide-headline">La Trampa de la Media: El 64% de Europa Vive en la Sombra</h2>
+        <p class="slide-lead">La asimetría de la distribución desmonta el indicador oficial y obliga a adoptar la mediana como referencia real.</p>
+
+        <div class="slide-grid-clean">
+          <div class="canvas-wrapper">
+            <img src="figuras/grafico_4_distribucion_sesgo.png" alt="Distribución y Sesgo">
+          </div>
+          <div class="editorial-aside">
+            <div class="stat-hero">
+              <div class="num red">64%</div>
+              <div class="label">De naciones bajo el promedio continental</div>
+            </div>
+            <div class="narrative-stream">
+              <div class="narrative-entry red">
+                <strong>La Media Inflada ($36.9k):</strong> Es un espejismo distorsionado por plazas financieras que sesgan el cálculo hacia la derecha.
+              </div>
+              <div class="narrative-entry">
+                <strong>La Mediana Real ($24.7k):</strong> Refleja el país representativo europeo, desvelando un desfase estructural de más de $12,200 USD.
+              </div>
+              <div class="narrative-entry">
+                <strong>Asimetría Positiva Evidente:</strong> El ajuste de densidad KDE confirma la concentración masiva en la franja baja y media del continente.
+              </div>
+              <div class="narrative-entry">
+                <strong>Doble Referencia Preatencional:</strong> Contraste directo de líneas (roja discontinua vs azul continua) con caja de síntesis sobre el propio lienzo.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================================================= -->
+      <!-- SLIDE 6: EPÍLOGO Y DESENLACE (SIN RÚBRICA - PURO VALOR) -->
+      <!-- ============================================================= -->
+      <div class="slide" id="slide-6" data-act="Desenlace y Epílogo" data-title="Rediseñar la Brújula" data-time="4:10 - 5:00"
+           data-speech="Para concluir esta historia, las tres evidencias cuantitativas nos dejan tres mandatos irrenunciables:<br><br>Primero: hay que gobernar por la mediana. Si las instituciones europeas siguen midiendo la convergencia con la media aritmética de 37.000 dólares, continuarán legislando de espaldas al 64% de sus naciones miembros.<br>Segundo: intervenir con urgencia en el corredor oriental para cerrar una brecha inadmisible de 33 a 1.<br>Y tercero: entender que el bienestar ciudadano no es cuestión de gigantismo industrial, sino de modelo y especialización.<br><br>En el plano computacional, todo el análisis es cien por cien reproducible en el script 'lab_sol.py', los gráficos cumplen el estándar de 300 DPI y declaro con total transparencia el uso asistido de Inteligencia Artificial para la verificación y optimización del código.<br><br>Europa no necesita más promedios complacientes; necesita mirar de frente a sus medianas.<br><br>Muchas gracias por su atención y quedo a su entera disposición para cualquier pregunta.">
+        <div class="slide-eyebrow">
+          <span class="eyebrow-act">Desenlace y Epílogo</span>
+          <span class="eyebrow-sep">/</span>
+          <span class="eyebrow-theme">De la Evidencia Empírica a la Decisión</span>
+        </div>
+        <h2 class="slide-headline">Rediseñar la Brújula: Tres Mandatos para las Políticas de Cohesión</h2>
+        <p class="slide-lead">La evidencia empírica desmiente la narrativa oficial y exige pasar de los promedios ficticios a la acción territorial.</p>
+
+        <div class="triad-takeaways">
+          <div class="takeaway-card">
+            <h3>01. Gobernar por la Mediana ($24.7k)</h3>
+            <p class="takeaway-text">Sustituir la media aritmética como baremo de corte en fondos de convergencia (FEDER). Calibrar subsidios sobre la media continental condena a la invisibilidad al 64% del territorio europeo que vive por debajo de ese umbral.</p>
+          </div>
+          <div class="takeaway-card red">
+            <h3>02. Cerrar la Brecha Oriental (Ratio 33:1)</h3>
+            <p class="takeaway-text">Concentrar la inversión de choque en infraestructuras y transición productiva en los Balcanes y el corredor oriental. Ningún proyecto de integración comunitaria es viable con una fractura económica de 33 a 1 entre ciudadanos.</p>
+          </div>
+          <div class="takeaway-card cyan">
+            <h3>03. Productividad sobre Tamaño</h3>
+            <p class="takeaway-text">Superar el espejismo del PIB bruto: las mayores potencias en masa económica no lideran en bienestar real. La calidad de vida de un país es el resultado de la especialización inteligente y la fortaleza institucional.</p>
+          </div>
+        </div>
+
+        <div class="closing-callout">
+          <div class="closing-quote">“Europa no puede seguir calibrando su cohesión con promedios que solo representan a una minoría. Mirar a la mediana es mirar a la realidad.”</div>
+          <div class="closing-meta">Turno de preguntas abierto  •  lab_sol.py reproducible  •  Septiembre 2026</div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Teleprompter -->
+  <div id="speaker-prompter">
+    <div class="prompter-bar">
+      <span id="prompter-title" style="font-weight: 700; color: var(--chart-blue);">GUIÓN DE DEFENSA ORAL</span>
+      <span style="font-size: 0.75rem;">Atajo: Pulsa [N] para ocultar o mostrar</span>
+    </div>
+    <div class="prompter-body" id="prompter-content">
+      <!-- Dynamic -->
+    </div>
+  </div>
+
+  <script>
+    let currentSlide = 1;
+    const totalSlides = 6;
+    let timerSeconds = 300;
+    let timerInterval = null;
+    let timerActive = false;
+
+    function renderSlide(n) {
+      if (n < 1 || n > totalSlides) return;
+      currentSlide = n;
+
+      document.querySelectorAll('.slide').forEach((s, idx) => {
+        if (idx + 1 === currentSlide) {
+          s.classList.add('active');
+        } else {
+          s.classList.remove('active');
+        }
+      });
+
+      document.getElementById('slide-indicator').textContent = `0${currentSlide} / 0${totalSlides}`;
+      updatePrompter();
+    }
+
+    function nextSlide() {
+      if (currentSlide < totalSlides) renderSlide(currentSlide + 1);
+    }
+
+    function prevSlide() {
+      if (currentSlide > 1) renderSlide(currentSlide - 1);
+    }
+
+    function togglePrompter() {
+      const p = document.getElementById('speaker-prompter');
+      p.classList.toggle('open');
+      document.getElementById('prompter-btn').classList.toggle('active-mode');
+    }
+
+    function updatePrompter() {
+      const cur = document.getElementById(`slide-${currentSlide}`);
+      const act = cur.getAttribute('data-act') || '';
+      const title = cur.getAttribute('data-title') || '';
+      const time = cur.getAttribute('data-time') || '';
+      const speech = cur.getAttribute('data-speech') || '';
+
+      document.getElementById('prompter-title').innerHTML = `
+        <span>SLIDE 0${currentSlide}: ${act} - ${title}</span>
+        <span style="color: var(--chart-blue); margin-left: 1rem;">[Ventana: ${time}]</span>
+      `;
+      document.getElementById('prompter-content').innerHTML = `
+        <div class="timer-cue">⏱ Tiempo recomendado: ${time}</div>
+        <div class="speech">"${speech}"</div>
+      `;
+    }
+
+    function updateTimerUI() {
+      const m = Math.floor(timerSeconds / 60);
+      const s = timerSeconds % 60;
+      const formatted = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+      const digits = document.getElementById('timer-digits');
+      const box = document.getElementById('timer-box');
+      digits.textContent = formatted;
+
+      if (timerSeconds <= 60 && timerSeconds > 15) {
+        box.classList.add('warning');
+        box.classList.remove('danger');
+      } else if (timerSeconds <= 15) {
+        box.classList.add('danger');
+        box.classList.remove('warning');
+      } else {
+        box.classList.remove('warning', 'danger');
+      }
+    }
+
+    function toggleTimer() {
+      if (timerActive) {
+        clearInterval(timerInterval);
+        timerActive = false;
+      } else {
+        timerActive = true;
+        timerInterval = setInterval(() => {
+          if (timerSeconds > 0) {
+            timerSeconds--;
+            updateTimerUI();
+          } else {
+            clearInterval(timerInterval);
+            timerActive = false;
+          }
+        }, 1000);
+      }
+    }
+
+    function resetTimer() {
+      clearInterval(timerInterval);
+      timerActive = false;
+      timerSeconds = 300;
+      updateTimerUI();
+    }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        if (document.exitFullscreen) document.exitFullscreen();
+      }
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
+        e.preventDefault();
+        nextSlide();
+      } else if (e.key === 'ArrowLeft' || e.key === 'Backspace' || e.key === 'PageUp') {
+        e.preventDefault();
+        prevSlide();
+      } else if (e.key.toLowerCase() === 'n') {
+        e.preventDefault();
+        togglePrompter();
+      } else if (e.key.toLowerCase() === 'f') {
+        e.preventDefault();
+        toggleFullscreen();
+      } else if (e.key.toLowerCase() === 't') {
+        e.preventDefault();
+        toggleTimer();
+      }
+    });
+
+    // Boot
+    renderSlide(1);
+    updateTimerUI();
+  </script>
+</body>
+</html>
