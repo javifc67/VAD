@@ -1,0 +1,11 @@
+services:
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: observatorio_cohesion_dashboard
+    ports:
+      - "8050:8050"
+    environment:
+      - PORT=8050
+    restart: unless-stopped
