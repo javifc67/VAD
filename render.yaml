@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: observatorio-cohesion-europea
+    runtime: docker
+    rootDir: DemoDay2
+    plan: free
+    region: frankfurt
+    envVars:
+      - key: PORT
+        value: 8050
