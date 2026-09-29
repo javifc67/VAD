@@ -4,6 +4,8 @@
 **Institución:** Universidad Politécnica de Madrid (UPM)  
 **Autor:** Javier  
 
+🌐 **Despliegue Público en Producción:** [https://vad-u2iv.onrender.com/](https://vad-u2iv.onrender.com/)
+
 ---
 
 ## 🎯 Pregunta y Soporte a la Decisión
