@@ -2,7 +2,7 @@ services:
   - type: web
     name: observatorio-cohesion-europea
     runtime: docker
-    rootDir: DemoDay2
+    dockerfilePath: Dockerfile
     plan: free
     region: frankfurt
     envVars:
