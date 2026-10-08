@@ -31,14 +31,27 @@ GEO_PATH = os.path.join(DATA_DIR, 'europe_geometries.geojson')
 df_macro = pd.read_csv(CSV_PATH)
 gdf_base = gpd.read_file(GEO_PATH)
 
+# Asegurar cálculo de PIB pc relativo (% sobre la media anual europea, Media UE = 100%)
+if 'gdp_per_capita_relative' not in df_macro.columns:
+    df_macro['gdp_per_capita_relative'] = (
+        df_macro['gdp_per_capita'] / df_macro.groupby('year')['gdp_per_capita'].transform('mean')
+    ) * 100
+
 # Mapeo descriptivo de métricas para la UI y el mapa
 METRIC_CONFIG = {
     'gdp_per_capita': {
-        'label': 'PIB per cápita',
+        'label': 'PIB per cápita (USD)',
         'unit': 'USD',
         'fmt': '${:,.0f}',
         'palette': cm.linear.YlGnBu_09,
         'plot_scale': 'log'
+    },
+    'gdp_per_capita_relative': {
+        'label': 'PIB pc (Escala Relativa)',
+        'unit': '% media UE',
+        'fmt': '{:.1f}%',
+        'palette': cm.linear.YlGnBu_09,
+        'plot_scale': 'linear'
     },
     'life_expectancy': {
         'label': 'Esperanza de vida',
@@ -421,14 +434,27 @@ def render_tab_mapa(year, region, country_sel, metric):
     df_y = df_macro[df_macro['year'] == year].copy()
     cfg = METRIC_CONFIG[metric]
 
+    # Campos redondeados para visualización limpia en GeoJsonTooltip
+    df_y['gdp_pc_disp'] = df_y['gdp_per_capita'].round(0)
+    df_y['gdp_rel_disp'] = df_y['gdp_per_capita_relative'].round(1)
+    df_y['life_disp'] = df_y['life_expectancy'].round(1)
+
     # Unir con geometrías
     gdf_merged = gdf_base.merge(df_y, on='iso_a3', how='left')
 
     # Configurar escala cromática accesible
-    val_min = df_macro[metric].quantile(0.02)
-    val_max = df_macro[metric].quantile(0.98)
-    colormap = cfg['palette'].scale(val_min, val_max)
-    colormap.caption = f"{cfg['label']} ({cfg['unit']}) - Año {year}"
+    if metric == 'gdp_per_capita_relative':
+        # En escala relativa, ajustamos el rango cromático dinámicamente al año seleccionado
+        # garantizando máximo contraste visual y diferenciación entre países (100% = Media UE anual)
+        val_min = max(0.0, float(df_y[metric].min()))
+        val_max = float(df_y[metric].max())
+        colormap = cfg['palette'].scale(val_min, val_max)
+        colormap.caption = f"{cfg['label']} ({cfg['unit']}) - Año {year} [100% = Media UE]"
+    else:
+        val_min = float(df_macro[metric].quantile(0.02))
+        val_max = float(df_macro[metric].quantile(0.98))
+        colormap = cfg['palette'].scale(val_min, val_max)
+        colormap.caption = f"{cfg['label']} ({cfg['unit']}) - Año {year}"
 
     # Crear mapa de Folium centrado en Europa
     m = folium.Map(
@@ -464,12 +490,13 @@ def render_tab_mapa(year, region, country_sel, metric):
         formatted_val = cfg['fmt'].format(val_metric)
 
         pib_str = f"${row.get('gdp_per_capita', 0):,.0f}"
+        pib_rel_str = f"{row.get('gdp_per_capita_relative', 0):.1f}% de la media UE"
         life_str = f"{row.get('life_expectancy', 0):.1f} años"
         unemp_str = f"{row.get('unemployment_rate', 0):.1f}%"
         rd_str = f"{row.get('rd_expenditure', 0):.2f}%"
 
         popup_html = f"""
-        <div style="font-family: sans-serif; min-width: 180px; padding: 4px;">
+        <div style="font-family: sans-serif; min-width: 195px; padding: 4px;">
             <h6 style="margin: 0 0 4px 0; color: #1E293B; font-weight: bold; border-bottom: 2px solid #3B82F6; padding-bottom: 2px;">
                 {c_name} <span style="font-size: 0.8em; color: #64748B;">({row.get('region', '')})</span>
             </h6>
@@ -477,7 +504,8 @@ def render_tab_mapa(year, region, country_sel, metric):
                 <b>{cfg['label']}:</b> <span style="color: #2563EB; font-weight: bold;">{formatted_val}</span>
             </p>
             <div style="font-size: 0.82em; color: #475569; margin-top: 6px;">
-                <div>• PIB pc: {pib_str}</div>
+                <div>• PIB pc (USD): {pib_str}</div>
+                <div>• PIB pc relativo: <b>{pib_rel_str}</b></div>
                 <div>• Esperanza: {life_str}</div>
                 <div>• Desempleo: {unemp_str}</div>
                 <div>• I+D: {rd_str} del PIB</div>
@@ -490,22 +518,40 @@ def render_tab_mapa(year, region, country_sel, metric):
             folium.Marker(
                 location=[centroid.y, centroid.x],
                 icon=folium.Icon(color='red', icon='info-sign'),
-                popup=folium.Popup(popup_html, max_width=250)
+                popup=folium.Popup(popup_html, max_width=260)
             ).add_to(m)
 
     geo_data = json.loads(gdf_merged.to_json())
+
+    # Tooltips dinámicos con alias claros y sin decimales excesivos
+    if metric == 'gdp_per_capita_relative':
+        tooltip_fields = ['country_name', 'gdp_rel_disp', 'gdp_pc_disp', 'life_disp']
+        tooltip_aliases = ['País:', 'PIB pc Relativo (% UE):', 'PIB pc (USD):', 'Esperanza (años):']
+    elif metric == 'gdp_per_capita':
+        tooltip_fields = ['country_name', 'gdp_pc_disp', 'gdp_rel_disp', 'life_disp']
+        tooltip_aliases = ['País:', 'PIB pc (USD):', 'PIB pc Relativo (% UE):', 'Esperanza (años):']
+    else:
+        tooltip_fields = ['country_name', metric, 'gdp_pc_disp', 'life_disp']
+        tooltip_aliases = ['País:', f'{cfg["label"]}:', 'PIB pc (USD):', 'Esperanza (años):']
+
     folium.GeoJson(
         geo_data,
         style_function=style_fn,
         tooltip=folium.GeoJsonTooltip(
-            fields=['country_name', metric, 'gdp_per_capita', 'life_expectancy'],
-            aliases=['País:', f'{cfg["label"]}:', 'PIB pc (USD):', 'Esperanza (años):'],
+            fields=tooltip_fields,
+            aliases=tooltip_aliases,
             localize=True
         )
     ).add_to(m)
 
     colormap.add_to(m)
     map_html = m.get_root().render()
+
+    alerta_analitica = (
+        "La escala relativa compara cada país con la media comunitaria de su año concreto (100% = Media UE), resolviendo la distorsión del crecimiento agregado e identificando con nitidez los contrastes territoriales sin comprimir los colores."
+        if metric == 'gdp_per_capita_relative' else
+        "Los países con mayor gasto en I+D y transición energética superan en más de un 100% el PIB per cápita promedio del Este europeo. Haz clic en cualquier país en el mapa para inspeccionar sus métricas detalladas."
+    )
 
     return dbc.Row([
         dbc.Col([
@@ -534,8 +580,7 @@ def render_tab_mapa(year, region, country_sel, metric):
             dbc.Alert([
                 html.I(className="fa-solid fa-lightbulb me-2"),
                 html.B("Lectura analítica: "),
-                "Los países con mayor gasto en I+D y transición energética superan en más de un 100% el PIB per cápita promedio del Este europeo. ",
-                "Haz clic en cualquier país en el mapa para inspeccionar sus métricas detalladas."
+                alerta_analitica
             ], color="info", className="border-0 shadow-sm small")
         ], md=4)
     ])
@@ -579,24 +624,33 @@ def render_tab_plotly(year, region, country_sel, metric):
     if region != 'ALL':
         df_y = df_y[df_y['region'] == region]
 
+    is_rel = (metric == 'gdp_per_capita_relative')
+    x_col = 'gdp_per_capita_relative' if is_rel else 'gdp_per_capita'
+    x_label = "PIB pc relativo (% media UE anual)" if is_rel else "PIB per cápita (USD, escala log)"
+    chart_title = (
+        f"<b>Relación PIB pc Relativo vs. Esperanza de Vida ({year})</b>"
+        if is_rel else
+        f"<b>Relación PIB per cápita vs. Esperanza de Vida ({year})</b>"
+    )
+
     # Gráfico 1: Dispersión Multidimensional Gapminder (PIB vs Esperanza de vida)
     fig_scatter = px.scatter(
         df_y,
-        x="gdp_per_capita",
+        x=x_col,
         y="life_expectancy",
         size="population",
         color="region",
         hover_name="country_name",
         color_discrete_map=PALETA_REGIONES,
-        log_x=True,
+        log_x=not is_rel,
         size_max=45,
         labels={
-            "gdp_per_capita": "PIB per cápita (USD, escala log)",
+            x_col: x_label,
             "life_expectancy": "Esperanza de vida (años)",
             "region": "Macrorregión",
             "population": "Población"
         },
-        title=f"<b>Relación PIB per cápita vs. Esperanza de Vida ({year})</b>"
+        title=chart_title
     )
 
     # Destacar país seleccionado
@@ -604,7 +658,7 @@ def render_tab_plotly(year, region, country_sel, metric):
     if not df_sel.empty:
         fig_scatter.add_trace(
             go.Scatter(
-                x=df_sel['gdp_per_capita'],
+                x=df_sel[x_col],
                 y=df_sel['life_expectancy'],
                 mode='markers+text',
                 marker=dict(size=22, color='rgba(0,0,0,0)', line=dict(color='black', width=3)),
@@ -615,16 +669,37 @@ def render_tab_plotly(year, region, country_sel, metric):
             )
         )
 
-    # Límites estables para evitar animaciones saltarinas (Evitar Muro de los Horrores)
-    fig_scatter.update_layout(
-        xaxis=dict(range=[2.5, 5.3], gridcolor='#E2E8F0'),
-        yaxis=dict(range=[65, 87], gridcolor='#E2E8F0'),
-        plot_bgcolor='white',
-        paper_bgcolor='white',
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-        font=dict(family="sans-serif", color="#1E293B"),
-        margin=dict(l=40, r=40, t=60, b=40)
-    )
+    # Configuración de ejes y referencias visuales
+    if is_rel:
+        fig_scatter.add_vline(
+            x=100,
+            line_dash="dash",
+            line_color="#64748B",
+            line_width=1.5,
+            annotation_text="Media UE (100%)",
+            annotation_position="top left",
+            annotation_font=dict(size=11, color="#475569")
+        )
+        x_max_val = max(360, float(df_y[x_col].max()) * 1.08)
+        fig_scatter.update_layout(
+            xaxis=dict(range=[0, x_max_val], gridcolor='#E2E8F0', title=x_label),
+            yaxis=dict(range=[65, 87], gridcolor='#E2E8F0'),
+            plot_bgcolor='white',
+            paper_bgcolor='white',
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+            font=dict(family="sans-serif", color="#1E293B"),
+            margin=dict(l=40, r=40, t=60, b=40)
+        )
+    else:
+        fig_scatter.update_layout(
+            xaxis=dict(range=[2.5, 5.3], gridcolor='#E2E8F0'),
+            yaxis=dict(range=[65, 87], gridcolor='#E2E8F0'),
+            plot_bgcolor='white',
+            paper_bgcolor='white',
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+            font=dict(family="sans-serif", color="#1E293B"),
+            margin=dict(l=40, r=40, t=60, b=40)
+        )
 
     # Gráfico 2: Serie Temporal con RangeSlider y RangeSelector del País Seleccionado
     df_hist_country = df_macro[df_macro['country_name'] == country_sel].sort_values('year')
@@ -637,7 +712,7 @@ def render_tab_plotly(year, region, country_sel, metric):
         x=df_hist_eu['year'],
         y=df_hist_eu[metric],
         mode='lines',
-        name='Media Europea',
+        name='Media Europea (100%)' if is_rel else 'Media Europea',
         line=dict(color='#94A3B8', width=2, dash='dash')
     ))
     fig_line.add_trace(go.Scatter(
@@ -662,6 +737,17 @@ def render_tab_plotly(year, region, country_sel, metric):
             textposition="top center",
             showlegend=False
         ))
+
+    # Línea de referencia del 100% si es escala relativa
+    if is_rel:
+        fig_line.add_hline(
+            y=100,
+            line_dash="dot",
+            line_color="#64748B",
+            line_width=1,
+            annotation_text="Paridad Media UE (100%)",
+            annotation_position="bottom right"
+        )
 
     fig_line.update_layout(
         title=f"<b>Evolución Histórica de {cfg['label']} (2000–2024): {country_sel} vs. Media UE</b>",

@@ -131,6 +131,7 @@ def main():
     # Métricas derivadas útiles para la visualización y KPIs
     df_base['pop_millions'] = df_base['population'] / 1e6
     df_base['gdp_total_billions'] = (df_base['gdp_per_capita'] * df_base['population']) / 1e9
+    df_base['gdp_per_capita_relative'] = (df_base['gdp_per_capita'] / df_base.groupby('year')['gdp_per_capita'].transform('mean')) * 100
 
     # Guardar CSV consolidado
     csv_path = 'DemoDay2/data/europe_macro_historical.csv'
