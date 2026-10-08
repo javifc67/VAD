@@ -4,7 +4,7 @@ Asignatura: Visualización y Análisis de Datos (VAD) - UPM
 Autor: Javier
 
 Cuadro de mando interactivo con arquitectura Dash nativa, análisis geoespacial
-en Folium, gráficos reactivos en Plotly y simulador predictivo de políticas con Scikit-Learn.
+en Folium, gráficos reactivos en Plotly y reproducción temporal interactiva.
 """
 
 import os
@@ -21,8 +21,6 @@ import dash_bootstrap_components as dbc
 import plotly.express as px
 import plotly.graph_objects as go
 
-from model import cargar_modelos, simular_politica, FEATURES
-
 # -----------------------------------------------------------------------------
 # 1. CARGA DE DATOS Y CONFIGURACIÓN INICIAL
 # -----------------------------------------------------------------------------
@@ -32,9 +30,6 @@ GEO_PATH = os.path.join(DATA_DIR, 'europe_geometries.geojson')
 
 df_macro = pd.read_csv(CSV_PATH)
 gdf_base = gpd.read_file(GEO_PATH)
-
-# Asegurar carga previa del modelo ML
-model_info = cargar_modelos()
 
 # Mapeo descriptivo de métricas para la UI y el mapa
 METRIC_CONFIG = {
@@ -104,34 +99,37 @@ server = app.server
 # -----------------------------------------------------------------------------
 # 3. COMPONENTES VISUALES DE LA INTERFAZ
 # -----------------------------------------------------------------------------
-navbar = dbc.Navbar(
-    dbc.Container([
-        dbc.Row([
-            dbc.Col([
-                html.Div([
-                    html.I(className="fa-solid fa-chart-line fa-2x text-primary me-3"),
-                    html.Div([
-                        html.H3("Observatorio de Cohesión y Convergencia Europea", className="mb-0 fw-bold text-dark"),
-                        html.Small("Soporte a la decisión estratégica y simulación de políticas públicas (2000–2024)", className="text-muted"),
-                    ])
-                ], className="d-flex align-items-center")
-            ], width=9),
-            dbc.Col([
-                dbc.Badge("Demo Day 2 (70%)", color="primary", className="p-2 me-2 fs-6"),
-                dbc.Badge("UPM · VAD", color="secondary", className="p-2 fs-6"),
-            ], width=3, className="text-end")
-        ], className="w-100 align-items-center")
-    ], fluid=True),
-    color="white",
-    className="border-bottom shadow-sm py-2 mb-3"
-)
 
 # Panel de Filtros Globales (Shneiderman: Overview first, zoom and filter)
 control_panel = dbc.Card(
     dbc.CardBody([
         dbc.Row([
             dbc.Col([
-                html.Label([html.I(className="fa-solid fa-calendar me-2 text-primary"), "Año de Análisis:"], className="fw-bold mb-1"),
+                html.Div([
+                    html.Label([
+                        html.I(className="fa-solid fa-calendar-days me-2 text-primary"),
+                        "Año: ",
+                        html.Span("2024", id='year-display-badge', className="badge bg-primary ms-1 fs-6")
+                    ], className="fw-bold mb-0 d-flex align-items-center"),
+                    dbc.ButtonGroup([
+                        dbc.Button(
+                            [html.I(className="fa-solid fa-play me-1", id='play-icon'), html.Span("Play", id='play-text')],
+                            id='btn-play',
+                            color='primary',
+                            size='sm',
+                            className="shadow-sm fw-bold px-2 py-1"
+                        ),
+                        dbc.Button(
+                            [html.I(className="fa-solid fa-rotate-left me-1"), "2000"],
+                            id='btn-reset-year',
+                            color='secondary',
+                            outline=True,
+                            size='sm',
+                            className="shadow-sm px-2 py-1",
+                            title="Reiniciar al año 2000"
+                        ),
+                    ], size='sm')
+                ], className="d-flex justify-content-between align-items-center mb-1"),
                 dcc.Slider(
                     id='year-slider',
                     min=2000,
@@ -139,7 +137,13 @@ control_panel = dbc.Card(
                     step=1,
                     value=2024,
                     marks={y: str(y) for y in range(2000, 2025, 4)},
-                    tooltip={"placement": "bottom", "always_visible": True}
+                    tooltip={"placement": "bottom", "always_visible": False}
+                ),
+                dcc.Interval(
+                    id='play-interval',
+                    interval=1200,
+                    n_intervals=0,
+                    disabled=True
                 )
             ], md=4, sm=12, className="pe-md-4"),
             dbc.Col([
@@ -185,12 +189,9 @@ kpi_row = dbc.Row(id='kpi-container', className="mb-4 g-3")
 tabs = dbc.Tabs([
     dbc.Tab(label="🗺️ Diagnóstico Espacial (Folium)", tab_id="tab-mapa", label_class_name="fw-bold"),
     dbc.Tab(label="📊 Dinámica Temporal & Gapminder (Plotly)", tab_id="tab-plotly", label_class_name="fw-bold"),
-    dbc.Tab(label="🤖 Simulador Predictivo de Políticas (ML)", tab_id="tab-simulador", label_class_name="fw-bold"),
-    dbc.Tab(label="📑 Conclusiones & Soporte a la Decisión", tab_id="tab-conclusiones", label_class_name="fw-bold"),
 ], id="tabs-main", active_tab="tab-mapa", className="nav-pills mb-3")
 
 app.layout = dbc.Container([
-    navbar,
     control_panel,
     kpi_row,
     tabs,
@@ -201,17 +202,69 @@ app.layout = dbc.Container([
             html.Hr(className="my-3 text-muted"),
             dbc.Row([
                 dbc.Col("Demo Day 2 · Visualización y Análisis de Datos (VAD) · UPM", className="text-muted small"),
-                dbc.Col("Autor: Javier · Arquitectura Dash + Folium + Scikit-Learn", className="text-muted small text-end")
+                dbc.Col("Autor: Javier · Arquitectura Dash + Folium + Plotly", className="text-muted small text-end")
             ])
         ], fluid=True),
         className="mt-auto"
     )
-], fluid=True, className="px-4 bg-white")
+], fluid=True, className="px-4 pt-3 bg-white")
 
 
 # -----------------------------------------------------------------------------
 # 4. CALLBACKS REACTIVOS Y EN CASCADA
 # -----------------------------------------------------------------------------
+
+# Callback de reproducción temporal automática (Play / Pausa)
+@app.callback(
+    Output('play-interval', 'disabled'),
+    Output('play-icon', 'className'),
+    Output('play-text', 'children'),
+    Output('btn-play', 'color'),
+    Input('btn-play', 'n_clicks'),
+    State('play-interval', 'disabled'),
+    prevent_initial_call=True
+)
+def toggle_play(n_clicks, is_disabled):
+    if is_disabled:
+        return False, "fa-solid fa-pause me-1", "Pausa", "warning"
+    else:
+        return True, "fa-solid fa-play me-1", "Play", "primary"
+
+
+# Callback para avanzar o reiniciar el año en la línea temporal
+@app.callback(
+    Output('year-slider', 'value'),
+    Input('play-interval', 'n_intervals'),
+    Input('btn-reset-year', 'n_clicks'),
+    Input('btn-play', 'n_clicks'),
+    State('year-slider', 'value'),
+    State('play-interval', 'disabled'),
+    prevent_initial_call=True
+)
+def gestionar_ano(n_intervals, n_reset, n_play, current_year, is_disabled):
+    trig = dash.ctx.triggered_id
+    if trig == 'btn-reset-year':
+        return 2000
+    if trig == 'btn-play':
+        # Si se inicia la reproducción y ya estamos en 2024, reiniciar a 2000 para empezar desde el inicio
+        if is_disabled and (current_year is None or current_year >= 2024):
+            return 2000
+        return dash.no_update
+    if trig == 'play-interval':
+        if current_year is None or current_year >= 2024:
+            return 2000
+        return current_year + 1
+    return current_year
+
+
+# Callback para reflejar el año activo en el badge
+@app.callback(
+    Output('year-display-badge', 'children'),
+    Input('year-slider', 'value')
+)
+def actualizar_badge_ano(year):
+    return str(year)
+
 
 # Callback 1: Cascada de Región a Países disponibles
 @app.callback(
@@ -358,10 +411,6 @@ def render_tab(active_tab, year, region, country, metric):
         return render_tab_mapa(year, region, country, metric)
     elif active_tab == 'tab-plotly':
         return render_tab_plotly(year, region, country, metric)
-    elif active_tab == 'tab-simulador':
-        return render_tab_simulador(year, country)
-    elif active_tab == 'tab-conclusiones':
-        return render_tab_conclusiones()
     return html.Div("Pestaña no encontrada.")
 
 
@@ -643,240 +692,7 @@ def render_tab_plotly(year, region, country_sel, metric):
     ])
 
 
-# -----------------------------------------------------------------------------
-# RENDER DE PESTAÑA 3: SIMULADOR ML DE POLÍTICAS PÚBLICAS
-# -----------------------------------------------------------------------------
-def render_tab_simulador(year, country_sel):
-    df_country_year = df_macro[(df_macro['country_name'] == country_sel) & (df_macro['year'] == year)]
-    if df_country_year.empty:
-        df_country_year = df_macro[df_macro['country_name'] == country_sel].sort_values('year').tail(1)
 
-    row_base = df_country_year.iloc[0]
-
-    return dbc.Row([
-        dbc.Col([
-            dbc.Card([
-                dbc.CardHeader([
-                    html.I(className="fa-solid fa-sliders me-2 text-primary"),
-                    f"Palancas de Inversión y Políticas: {country_sel} ({year})"
-                ], className="fw-bold bg-white"),
-                dbc.CardBody([
-                    html.P("Simula el impacto de reasignar presupuestos de fondos de cohesión sobre los indicadores estructurales del país:", className="text-muted small"),
-                    
-                    html.Label([
-                        html.B("Inversión en I+D (% del PIB): "),
-                        html.Span(f"Base: {row_base['rd_expenditure']:.2f}%", className="text-muted ms-1")
-                    ], className="small mb-1"),
-                    dcc.Slider(
-                        id='sim-rd-slider',
-                        min=-1.5,
-                        max=3.0,
-                        step=0.1,
-                        value=0.5,
-                        marks={-1.5: '-1.5%', 0: 'Base', 1.5: '+1.5%', 3.0: '+3.0%'},
-                        tooltip={"placement": "bottom", "always_visible": True}
-                    ),
-                    html.Hr(className="my-3 text-muted"),
-
-                    html.Label([
-                        html.B("Inversión en Sanidad (% del PIB): "),
-                        html.Span(f"Base: {row_base['health_expenditure']:.2f}%", className="text-muted ms-1")
-                    ], className="small mb-1"),
-                    dcc.Slider(
-                        id='sim-health-slider',
-                        min=-2.0,
-                        max=4.0,
-                        step=0.2,
-                        value=1.0,
-                        marks={-2.0: '-2.0%', 0: 'Base', 2.0: '+2.0%', 4.0: '+4.0%'},
-                        tooltip={"placement": "bottom", "always_visible": True}
-                    ),
-                    html.Hr(className="my-3 text-muted"),
-
-                    html.Label([
-                        html.B("Transición Renovable (% en el Mix): "),
-                        html.Span(f"Base: {row_base['renewable_energy_pct']:.1f}%", className="text-muted ms-1")
-                    ], className="small mb-1"),
-                    dcc.Slider(
-                        id='sim-renew-slider',
-                        min=-20.0,
-                        max=40.0,
-                        step=2.0,
-                        value=15.0,
-                        marks={-20: '-20%', 0: 'Base', 20: '+20%', 40: '+40%'},
-                        tooltip={"placement": "bottom", "always_visible": True}
-                    ),
-                ])
-            ], className="border-0 shadow-sm mb-3")
-        ], md=4),
-        dbc.Col([
-            html.Div(id='sim-results-container')
-        ], md=8)
-    ])
-
-
-# Callback para calcular la simulación de ML en tiempo real
-@app.callback(
-    Output('sim-results-container', 'children'),
-    Input('sim-rd-slider', 'value'),
-    Input('sim-health-slider', 'value'),
-    Input('sim-renew-slider', 'value'),
-    Input('country-dropdown', 'value'),
-    Input('year-slider', 'value')
-)
-def actualizar_simulacion_ml(delta_rd, delta_health, delta_renew, country_sel, year):
-    df_country_year = df_macro[(df_macro['country_name'] == country_sel) & (df_macro['year'] == year)]
-    if df_country_year.empty:
-        df_country_year = df_macro[df_macro['country_name'] == country_sel].sort_values('year').tail(1)
-    row_base = df_country_year.iloc[0]
-
-    res = simular_politica(
-        row_base.to_dict(),
-        delta_rd=delta_rd,
-        delta_health=delta_health,
-        delta_renew=delta_renew
-    )
-
-    # Tarjetas de predicción
-    gdp_delta = res['gdp_delta']
-    life_delta = res['life_delta']
-
-    cards = dbc.Row([
-        dbc.Col([
-            dbc.Card([
-                dbc.CardBody([
-                    html.Span("PIB PER CÁPITA PROYECTADO", className="text-muted fw-bold small"),
-                    html.H3(f"${res['gdp_sim']:,.0f}", className="fw-bold mb-0 text-primary"),
-                    html.Div([
-                        html.Span(f"{'▲' if gdp_delta >= 0 else '▼'} ${abs(gdp_delta):,.0f} ",
-                                  className="text-success fw-bold" if gdp_delta >= 0 else "text-danger fw-bold"),
-                        f"vs. nivel base actual (${res['gdp_base']:,.0f})"
-                    ], className="small text-muted")
-                ])
-            ], className="border-0 shadow-sm border-start border-4 border-primary")
-        ], md=6),
-        dbc.Col([
-            dbc.Card([
-                dbc.CardBody([
-                    html.Span("ESPERANZA DE VIDA PROYECTADA", className="text-muted fw-bold small"),
-                    html.H3(f"{res['life_sim']:.1f} años", className="fw-bold mb-0 text-success"),
-                    html.Div([
-                        html.Span(f"{'▲' if life_delta >= 0 else '▼'} {abs(life_delta):.2f} años ",
-                                  className="text-success fw-bold" if life_delta >= 0 else "text-danger fw-bold"),
-                        f"vs. nivel base actual ({res['life_base']:.1f} años)"
-                    ], className="small text-muted")
-                ])
-            ], className="border-0 shadow-sm border-start border-4 border-success")
-        ], md=6)
-    ], className="mb-3 g-3")
-
-    # Gráfico de barras comparativo (Base vs Simulado)
-    fig_comp = go.Figure()
-    fig_comp.add_trace(go.Bar(
-        name='Situación Base (Real)',
-        x=['PIB pc (USD)', 'I+D (% PIB × 10k)', 'Salud (% PIB × 10k)'],
-        y=[res['gdp_base'], row_base['rd_expenditure']*10000, row_base['health_expenditure']*10000],
-        marker_color='#94A3B8'
-    ))
-    fig_comp.add_trace(go.Bar(
-        name='Escenario Simulado (ML)',
-        x=['PIB pc (USD)', 'I+D (% PIB × 10k)', 'Salud (% PIB × 10k)'],
-        y=[res['gdp_sim'], res['features_sim']['rd_expenditure']*10000, res['features_sim']['health_expenditure']*10000],
-        marker_color='#2563EB'
-    ))
-    fig_comp.update_layout(
-        barmode='group',
-        title="<b>Impacto Estructural: Base vs. Simulación Predictiva</b>",
-        plot_bgcolor='white',
-        paper_bgcolor='white',
-        font=dict(family="sans-serif", color="#1E293B"),
-        margin=dict(l=40, r=40, t=50, b=40)
-    )
-
-    # Explicabilidad del Modelo ML (Importancia de Características)
-    metrics_info = model_info['metrics']['gdp']
-    importances = metrics_info['importances']
-    sorted_imp = sorted(importances.items(), key=lambda x: x[1], reverse=True)
-
-    fig_imp = px.bar(
-        x=[v for k, v in sorted_imp],
-        y=[METRIC_CONFIG.get(k, {}).get('label', k) for k, v in sorted_imp],
-        orientation='h',
-        labels={'x': 'Importancia Relativa (Gini)', 'y': 'Palanca Macroeconómica'},
-        title=f"<b>Importancia de Variables en el Modelo ML (R² = {metrics_info['r2']:.3f})</b>"
-    )
-    fig_imp.update_layout(
-        plot_bgcolor='white',
-        paper_bgcolor='white',
-        yaxis=dict(autorange="reversed"),
-        font=dict(family="sans-serif", color="#1E293B"),
-        margin=dict(l=40, r=40, t=50, b=40)
-    )
-
-    return html.Div([
-        cards,
-        dbc.Row([
-            dbc.Col([
-                dbc.Card([dbc.CardBody([dcc.Graph(figure=fig_comp, config={'displayModeBar': False})])], className="border-0 shadow-sm")
-            ], md=6),
-            dbc.Col([
-                dbc.Card([dbc.CardBody([dcc.Graph(figure=fig_imp, config={'displayModeBar': False})])], className="border-0 shadow-sm")
-            ], md=6)
-        ])
-    ])
-
-
-# -----------------------------------------------------------------------------
-# RENDER DE PESTAÑA 4: CONCLUSIONES Y SOPORTE A LA DECISIÓN (STORYTELLING)
-# -----------------------------------------------------------------------------
-def render_tab_conclusiones():
-    return dbc.Card([
-        dbc.CardBody([
-            html.H4("🎯 Síntesis Ejecutiva y Soporte a la Decisión Europea", className="fw-bold text-dark mb-3"),
-            dbc.Row([
-                dbc.Col([
-                    dbc.Alert([
-                        html.H5("1. ¿Se ha cerrado la brecha territorial en Europa?", className="alert-heading fw-bold"),
-                        html.P(
-                            "Los datos históricos demuestran un avance claro en la convergencia: mientras que en el año 2000 la brecha de PIB per cápita "
-                            "entre el 10% más rico (Europa del Norte/Occidental) y el 10% más vulnerable (Europa del Este) era de 4.2x, "
-                            "en 2024 se ha reducido a 2.4x. Países como Polonia, Chequia y los Bálticos han duplicado su poder adquisitivo real."
-                        )
-                    ], color="primary", className="border-0 shadow-sm")
-                ], md=6),
-                dbc.Col([
-                    dbc.Alert([
-                        html.H5("2. Eficacia de las palancas predictivas (ML)", className="alert-heading fw-bold"),
-                        html.P(
-                            "El modelo Random Forest (R² = 0.937) identifica que el gasto en I+D (% PIB) y la inversión en el sistema de salud "
-                            "representan más del 65% de la varianza explicada del PIB per cápita y la longevidad. "
-                            "Un incremento del 1.0% en I+D genera un retorno predictivo de +$3,400 por habitante a medio plazo."
-                        )
-                    ], color="success", className="border-0 shadow-sm")
-                ], md=6),
-            ]),
-            dbc.Row([
-                dbc.Col([
-                    dbc.Alert([
-                        html.H5("3. El dividendo verde de la transición renovable", className="alert-heading fw-bold"),
-                        html.P(
-                            "Las regiones con mayor penetración renovable (Portugal, España, Dinamarca, Suecia) presentan una mayor resiliencia "
-                            "frente a las crisis energéticas e inflacionarias recientes, desvinculando el crecimiento del PIB de la volatilidad del crudo."
-                        )
-                    ], color="info", className="border-0 shadow-sm")
-                ], md=6),
-                dbc.Col([
-                    dbc.Alert([
-                        html.H5("4. Recomendación estratégica para el Fondo de Cohesión", className="alert-heading fw-bold"),
-                        html.P(
-                            "Priorizar subsidios condicionados a la intensificación tecnológica y descarbonización industrial en las regiones del Este y Sur, "
-                            "asegurando que ningún estado miembro destine menos del 2.5% de su PIB a I+D para garantizar la convergencia plena antes de 2035."
-                        )
-                    ], color="warning", className="border-0 shadow-sm")
-                ], md=6),
-            ])
-        ])
-    ], className="border-0 shadow-sm")
 
 
 # -----------------------------------------------------------------------------

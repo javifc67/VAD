@@ -1,10 +1,9 @@
 # Observatorio de Cohesión y Convergencia Europea (2000–2024)
-### Demo Day 2: El Salto al Desarrollo Interactivo (70% Evaluación)
-**Asignatura:** Visualización y Análisis de Datos (VAD)  
-**Institución:** Universidad Politécnica de Madrid (UPM)  
+### Demo Day 2: El Salto al Desarrollo Interactivo
+**Asignatura:** Visualización y Análisis de Datos (VAD) · Universidad Politécnica de Madrid (UPM)  
 **Autor:** Javier  
 
-🌐 **Despliegue Público en Producción:** [https://vad-u2iv.onrender.com/](https://vad-u2iv.onrender.com/)
+🌐 **Despliegue Público en la Nube:** [https://vad-u2iv.onrender.com/](https://vad-u2iv.onrender.com/)
 
 ---
 
@@ -15,60 +14,42 @@
 
 ---
 
-## 🏗️ Arquitectura Técnica
-
-* **Framework Web:** Plotly Dash nativo sobre servidor Flask / WSGI.
-* **Servidor de Producción:** Gunicorn (2 workers, 2 threads).
-* **Análisis Geoespacial:** Mapas interactivos en Folium encapsulados en iframe con popups HTML y coropletas continuas.
-* **Inteligencia Empírica (ML):** Regresores Random Forest de Scikit-Learn ($R^2 = 0.937$) ejecutándose en segundo plano para simulaciones en tiempo real.
-* **Contenerización:** Docker multi-plataforma listo para despliegue público (Render, Railway, Fly.io o VPS).
+## 🏗️ Características del Cuadro de Mando
+* **Arquitectura:** Aplicación interactiva nativa en Plotly Dash (servidor Flask).
+* **Diagnóstico Espacial (Folium):** Mapa coroplético interactivo continuo con popups detallados por país y ranking territorial.
+* **Línea Temporal con Reproductor Automático:** Avance interactivo con botones Play / Pausa para observar la evolución temporal 2000–2024 en tiempo real.
+* **Dinámica Temporal (Plotly):** Dispersión multidimensional tipo Gapminder y comparativa de series históricas respecto a la media de la UE.
 
 ---
 
-## 📁 Estructura del Directorio
-
+## 📁 Estructura del Proyecto
 ```text
-DemoDay2/
-├── app.py                  # Servidor y aplicación web Dash completa
-├── lab_sol.py              # Entrypoint alternativo de ejecución directa
-├── model.py                # Entrenamiento y motor de inferencia ML (Random Forest)
-├── descargar_datos.py      # Pipeline de ingesta y limpieza de datos (Banco Mundial)
-├── requirements.txt        # Dependencias oficiales de producción (+ gunicorn)
-├── Dockerfile              # Imagen Docker ligera lista para despliegue público
-├── docker-compose.yml      # Configuración de arranque con Docker Compose
-├── .dockerignore           # Exclusión de archivos innecesarios en la imagen
-├── README.md               # Documentación del proyecto
+├── lab_sol.py                          # Script principal de ejecución (entrypoint oficial)
+├── app.py                              # Servidor y componentes de la aplicación Dash
+├── requirements.txt                    # Dependencias y librerías de Python
+├── README.md                           # Instrucciones de ejecución
 └── data/
-    ├── europe_macro_historical.csv  # 975 registros limpios (39 países × 25 años)
-    ├── europe_geometries.geojson     # Polígonos geoespaciales sincronizados
-    └── models_rf.joblib              # Modelos entrenados y métricas persistidas
+    ├── europe_macro_historical.csv     # Dataset histórico del Banco Mundial (2000–2024)
+    └── europe_geometries.geojson       # Polígonos geoespaciales sincronizados
 ```
 
 ---
 
-## 🚀 Despliegue y Ejecución
+## 🚀 Instrucciones de Ejecución en Local
 
-### Opción A: Despliegue con Docker (Recomendado)
+Para ejecutar la aplicación en local, abrir una terminal en el directorio del proyecto y seguir estos pasos:
+
+### 1. Instalar las dependencias
 ```bash
-# Construir y levantar el contenedor
-docker compose up --build
-
-# O con Docker CLI directo:
-docker build -t vad-demoday2 .
-docker run -p 8050:8050 vad-demoday2
+pip install -r requirements.txt
 ```
-La aplicación quedará accesible en: `http://localhost:8050`
 
-### Opción B: Despliegue en Plataformas Cloud Gratuitas / PaaS
-El `Dockerfile` está preparado con detección dinámica de variable `$PORT`, lo que permite desplegar en 1 clic en:
-* **Render:** Crear un *Web Service* conectando el repositorio GitHub, seleccionando entorno *Docker*.
-* **Railway / Fly.io:** Detecta automáticamente el `Dockerfile` y expone el servicio con SSL gratuito.
-* **Hugging Face Spaces:** Crear un Space tipo *Docker*, subir los archivos y queda público al instante.
-
-### Opción C: Ejecución Local Directa
+### 2. Ejecutar la aplicación
 ```bash
-conda activate vad
-python app.py
-# o con Gunicorn en producción:
-gunicorn --bind 0.0.0.0:8050 app:server
+python lab_sol.py
 ```
+*(Alternativamente, también puede iniciarse con `python app.py`)*
+
+### 3. Abrir en el navegador
+Una vez iniciado el servidor, acceder a la aplicación desde cualquier navegador en:  
+👉 **http://localhost:8050** (o `http://127.0.0.1:8050`)
